@@ -1,0 +1,77 @@
+/*
+ * Student: Aaron Birkey
+ * Assignment: Programming Project #3 – Concurrency and the I/O Subsystem
+ */
+
+/* Semaphores */
+semaphore mutex;
+semaphore request_served[4];
+semaphore dev1_full, dev2_full;
+semaphore op_complete, op_complete2;
+semaphore doio_shutdown, disk_shutdown;
+
+/* Shared variables */
+int bufid, bufdev, bufaddr;
+int iorqid[4], iorqaddr[4];
+int iorqid2[4], iorqaddr2[4];
+int pio, pio2, seek;
+int total_io, iorq1_count, iorq2_count;
+
+/* Process 1: User */
+void User() {
+    int j, dev, addr, i;
+    for (j = 1; j <= 5; j++) {
+        dev = random(2) + 1;
+        addr = random(20) + 1;
+
+        bufid = i;
+        bufdev = dev;
+        bufaddr = addr;
+        wait(request_served[i]);
+        wait(request_served[bufaddr]);
+        wait(request_served[bufid]);
+    }
+  
+}
+
+/* Process 2: DOIO */
+void DOIO() {
+    int served = 0, id, dev, addr;
+    while (served < 20) {
+        id = bufid;
+        dev = bufdev;
+        addr = bufaddr;
+        if (dev == 1) {
+            wait(mutex);
+            iorqid[iorq1_count] = id;
+            iorqaddr[iorq1_count] = addr;
+            iorq1_count++;
+            signal(mutex);
+            signal(dev1_full);
+        } else {
+            wait(mutex);
+            iorqid[iorq1_count] = id;
+            iorqaddr[iorq1_count] = addr;
+            iorq1_count++;
+            signal(mutex);
+            signal(dev2_full);
+        }
+        served++;
+    }
+    wait(doio_shutdown);
+    signal(disk_shutdown);
+   
+}
+
+/* Main Program */
+main() {
+    /* Initialize semaphores */
+    initialsem(mutex, 1);
+    initialsem(dev1_full, 0);
+    initialsem(doio_shutdown, 0);
+    /* ... (init others similarly) ... */
+
+    /* Start processes */
+        User();
+        DOIO();
+}

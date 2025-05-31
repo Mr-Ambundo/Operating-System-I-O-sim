@@ -1,0 +1,75 @@
+BACI System: C-- to PCODE Compiler, 10/03/2010
+Source file: C:\Users\Administrator\OneDrive\Desktop\Idk\program.cm  Sat Apr 26 00:56:30 2025
+ line  pc
+   1    0  /* Semaphores */
+   2    0  semaphore mutex;
+   3    0  semaphore request_served[4];
+   4    0  semaphore dev1_full, dev2_full;
+   5    0  semaphore op_complete, op_complete2;
+   6    0  semaphore doio_shutdown, disk_shutdown;
+   7    0  
+   8    0  /* Shared variables */
+   9    0  int bufid, bufdev, bufaddr;
+  10    0  int iorqid[4], iorqaddr[4];
+  11    0  int iorqid2[4], iorqaddr2[4];
+  12    0  int pio, pio2, seek;
+  13    0  int total_io, iorq1_count, iorq2_count;
+  14    0  
+  15    0  /* Process 1: User */
+  16    0  void User() {
+  17    0      int j, dev, addr, i;
+  18    0      for (j = 1; j <= 5; j++) {
+  19   14          dev = random(2) + 1;
+  20   20          addr = random(20) + 1;
+  21   26  
+  22   26          bufid = i;
+  23   29          bufdev = dev;
+  24   32          bufaddr = addr;
+  25   35          wait(request_served[i]);
+  26   39          wait(request_served[bufaddr]);
+  27   43          wait(request_served[bufid]);
+  28   47      }
+  29   48    
+  30   48  }
+  31   49  
+  32   49  /* Process 2: DOIO */
+  33   49  void DOIO() {
+  34   49      int served = 0, id, dev, addr;
+  35   52      while (served < 20) {
+  36   56          id = bufid;
+  37   59          dev = bufdev;
+  38   62          addr = bufaddr;
+  39   65          if (dev == 1) {
+  40   69              wait(mutex);
+  41   71              iorqid[iorq1_count] = id;
+  42   76              iorqaddr[iorq1_count] = addr;
+  43   81              iorq1_count++;
+  44   86              signal(mutex);
+  45   88              signal(dev1_full);
+  46   90          } else {
+  47   91              wait(mutex);
+  48   93              iorqid[iorq1_count] = id;
+  49   98              iorqaddr[iorq1_count] = addr;
+  50  103              iorq1_count++;
+  51  108              signal(mutex);
+  52  110              signal(dev2_full);
+  53  112          }
+  54  112          served++;
+  55  117      }
+  56  118      wait(doio_shutdown);
+  57  120      signal(disk_shutdown);
+  58  122     
+  59  122  }
+  60  123  
+  61  123  /* Main Program */
+  62  123  main() {
+  63  124      /* Initialize semaphores */
+  64  124      initialsem(mutex, 1);
+  65  127      initialsem(dev1_full, 0);
+  66  130      initialsem(doio_shutdown, 0);
+  67  133      /* ... (init others similarly) ... */
+  68  133  
+  69  133      /* Start processes */
+  70  133          User();
+  71  136          DOIO();
+  72  139  }
